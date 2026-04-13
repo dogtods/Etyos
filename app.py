@@ -435,18 +435,20 @@ elif page == "今日の語根":
 
 elif page == "文章から学ぶ":
     st.title("📖 文章から学ぶ")
-    st.markdown("英文を入力すると、使われている語源を自動で検出し、あなたの語彙ネットワークを広げます。")
+    st.markdown("文章を入力してください。日本語の場合は自動的に英訳してから語源を解析します。")
 
     # キャッシュの初期化
     if "text_cache" not in st.session_state:
         st.session_state["text_cache"] = {}
     if "analysis_stats" not in st.session_state:
         st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
+    if "translated_text" not in st.session_state:
+        st.session_state["translated_text"] = None
 
     col_main, col_side = st.columns([7, 3])
 
     with col_main:
-        input_text = st.text_area("英文を入力してください", height=200, placeholder="Example: The transportation system is essential for international commerce.", key="study_text_input")
+        input_text = st.text_area("文章を入力してください", height=200, placeholder="Example: The transportation system is essential for international commerce.\nまたは日本語：輸送システムは国際貿易に不可欠です。", key="study_text_input")
         
         btn_col1, btn_col2 = st.columns([1, 4])
         with btn_col1:
@@ -455,15 +457,46 @@ elif page == "文章から学ぶ":
             if st.button("🗑️ キャッシュクリア"):
                 st.session_state["text_cache"] = {}
                 st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
+                st.session_state["translated_text"] = None
                 st.rerun()
 
         if input_text:
             import re
-            # 解析処理
-            words = re.findall(r'\b\w+\b', input_text)
-            unique_words = list(set([w.lower() for w in words]))
+            
+            # 日本語判定関数
+            def has_japanese(text):
+                return bool(re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text))
+
+            if analyze_btn:
+                # 日本語が含まれる場合は翻訳を実行
+                if has_japanese(input_text):
+                    with st.spinner("日本語を英語に翻訳中..."):
+                        trans_prompt = f"""
+                        以下の日本語を自然な英語に翻訳してください。
+                        JSON形式で返してください（マークダウン不要）：
+                        {{
+                          "translated_text": "Translated English text"
+                        }}
+                        
+                        日本語：{input_text}
+                        """
+                        res, err = call_gemini(trans_prompt)
+                        st.session_state["analysis_stats"]["api_calls"] += 1
+                        if not error and res:
+                            st.session_state["translated_text"] = res.get("translated_text", "")
+                        else:
+                            st.error(f"翻訳に失敗しました: {err}")
+                else:
+                    st.session_state["translated_text"] = None
+
+            # 解析対象のテキストを決定
+            target_text = st.session_state["translated_text"] if st.session_state["translated_text"] else input_text
             
             if analyze_btn:
+                # 解析処理
+                words = re.findall(r'\b\w+\b', target_text)
+                unique_words = list(set([w.lower() for w in words]))
+                
                 unknown_words_to_api = []
                 
                 for word in unique_words:
@@ -474,7 +507,6 @@ elif page == "文章から学ぶ":
                     found = False
                     # Step 1: Local matching
                     for m in ALL_MORPHEMES:
-                        # Handle multiple patterns and dashes
                         patterns = [p.strip().replace('-', '') for p in m['morpheme'].split('/')]
                         if word in [ex.lower() for ex in m['examples']] or any(p in word for p in patterns):
                             st.session_state["text_cache"][word] = {
@@ -492,7 +524,7 @@ elif page == "文章から学ぶ":
                         else:
                             st.session_state["text_cache"][word] = None
                 
-                # Step 2: API Call
+                # Step 2: API Call (Etymology Analysis)
                 if unknown_words_to_api:
                     with st.spinner(f"AIが {len(unknown_words_to_api)} 語を詳細解析中..."):
                         unknown_list_str = ", ".join(unknown_words_to_api)
@@ -525,26 +557,24 @@ elif page == "文章から学ぶ":
                                 }
                                 st.session_state["analysis_stats"]["api"] += 1
                         
-                        # Cache the rest as None to avoid repeated calls
                         for w in unknown_words_to_api:
                             if w not in st.session_state["text_cache"]:
                                 st.session_state["text_cache"][w] = None
 
+            # 解析結果の表示 (target_textを使用)
+            if st.session_state["translated_text"]:
+                st.info(f"🤖 **AI翻訳結果:** {st.session_state['translated_text']}")
+
             # ハイライト表示の生成
             display_html = ""
-            tokens = re.findall(r'\w+|[^\w\s]|\s+', input_text)
+            tokens = re.findall(r'\w+|[^\w\s]|\s+', target_text)
             
-            # Match results container for ranking
-            current_matches = []
-
             for token in tokens:
                 w_lower = token.lower()
                 if w_lower in st.session_state["text_cache"] and st.session_state["text_cache"][w_lower]:
                     res = st.session_state["text_cache"][w_lower]
                     m_type = res["type"]
-                    current_matches.append(res)
                     
-                    # Styles from specifications
                     if m_type == "prefix":
                         bg, border = "rgba(52,152,219,0.25)", "#3498db"
                     elif m_type == "root":
@@ -563,10 +593,11 @@ elif page == "文章から学ぶ":
     with col_side:
         st.subheader("📊 語根ランキング")
         
-        # Current analysis results aggregation
-        if input_text and "text_cache" in st.session_state:
-            # Re-collect all matches in the current text
-            words_in_text = re.findall(r'\b\w+\b', input_text)
+        # 決定された表示対象テキスト
+        display_target = st.session_state["translated_text"] if st.session_state["translated_text"] else input_text
+        
+        if display_target and "text_cache" in st.session_state:
+            words_in_text = re.findall(r'\b\w+\b', display_target)
             matches_in_text = []
             for w in words_in_text:
                 w_l = w.lower()
@@ -574,7 +605,6 @@ elif page == "文章から学ぶ":
                     matches_in_text.append((w, st.session_state["text_cache"][w_l]))
             
             if matches_in_text:
-                # Group by morpheme
                 morpheme_counts = {}
                 for word, m_info in matches_in_text:
                     m_key = f"{m_info['morpheme']}|{m_info['type']}"
@@ -583,7 +613,6 @@ elif page == "文章から学ぶ":
                     morpheme_counts[m_key]["words"].add(word)
                     morpheme_counts[m_key]["count"] += 1
                 
-                # Sort by count
                 sorted_ranks = sorted(morpheme_counts.items(), key=lambda x: x[1]["count"], reverse=True)
                 max_count = sorted_ranks[0][1]["count"] if sorted_ranks else 1
                 
@@ -602,7 +631,7 @@ elif page == "文章から学ぶ":
                         st.progress(data["count"] / max_count)
                         st.markdown(f"<p style='font-size: 0.85em; color: #8b949e; margin-top: -10px;'>検出語: {', '.join(list(data['words']))}</p>", unsafe_allow_html=True)
             else:
-                st.info("単語を解析して語源を見つけましょう。")
+                st.info("文章を解析して語源を見つけましょう。")
         
         st.markdown("---")
         st.subheader("⚙️ API使用状況")
