@@ -88,7 +88,7 @@ st.sidebar.markdown("---")
 # Page Selection
 page = st.sidebar.radio(
     "メニュー",
-    ["語源辞典", "単語分解", "クイズ", "語根ワールド", "今日の語根"],
+    ["語源辞典", "単語分解", "クイズ", "語根ワールド", "今日の語根", "文章から学ぶ"],
     index=0
 )
 
@@ -432,3 +432,182 @@ elif page == "今日の語根":
     if st.session_state.get('daily_explanation'):
         st.markdown("### 🖋️ 深掘り解説")
         st.markdown(st.session_state.daily_explanation)
+
+elif page == "文章から学ぶ":
+    st.title("📖 文章から学ぶ")
+    st.markdown("英文を入力すると、使われている語源を自動で検出し、あなたの語彙ネットワークを広げます。")
+
+    # キャッシュの初期化
+    if "text_cache" not in st.session_state:
+        st.session_state["text_cache"] = {}
+    if "analysis_stats" not in st.session_state:
+        st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
+
+    col_main, col_side = st.columns([7, 3])
+
+    with col_main:
+        input_text = st.text_area("英文を入力してください", height=200, placeholder="Example: The transportation system is essential for international commerce.", key="study_text_input")
+        
+        btn_col1, btn_col2 = st.columns([1, 4])
+        with btn_col1:
+            analyze_btn = st.button("🔍 解析する", type="primary")
+        with btn_col2:
+            if st.button("🗑️ キャッシュクリア"):
+                st.session_state["text_cache"] = {}
+                st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
+                st.rerun()
+
+        if input_text:
+            import re
+            # 解析処理
+            words = re.findall(r'\b\w+\b', input_text)
+            unique_words = list(set([w.lower() for w in words]))
+            
+            if analyze_btn:
+                unknown_words_to_api = []
+                
+                for word in unique_words:
+                    if word in st.session_state["text_cache"]:
+                        st.session_state["analysis_stats"]["cache"] += 1
+                        continue
+                    
+                    found = False
+                    # Step 1: Local matching
+                    for m in ALL_MORPHEMES:
+                        # Handle multiple patterns and dashes
+                        patterns = [p.strip().replace('-', '') for p in m['morpheme'].split('/')]
+                        if word in [ex.lower() for ex in m['examples']] or any(p in word for p in patterns):
+                            st.session_state["text_cache"][word] = {
+                                "morpheme": m['morpheme'],
+                                "meaning": m['meaning'],
+                                "type": m['type']
+                            }
+                            st.session_state["analysis_stats"]["local"] += 1
+                            found = True
+                            break
+                    
+                    if not found:
+                        if len(word) >= 4:
+                            unknown_words_to_api.append(word)
+                        else:
+                            st.session_state["text_cache"][word] = None
+                
+                # Step 2: API Call
+                if unknown_words_to_api:
+                    with st.spinner(f"AIが {len(unknown_words_to_api)} 語を詳細解析中..."):
+                        unknown_list_str = ", ".join(unknown_words_to_api)
+                        prompt = f"""
+                        以下の英単語リストを語源分析してください。
+                        単語：{unknown_list_str}
+
+                        JSONのみで返してください：
+                        {{
+                          "analyzed": [
+                            {{
+                              "word": "example",
+                              "root": "empl",
+                              "root_meaning": "取る",
+                              "role": "root",
+                              "memory": "サンプルを取り出すイメージ"
+                            }}
+                          ]
+                        }}
+                        """
+                        result, error = call_gemini(prompt)
+                        st.session_state["analysis_stats"]["api_calls"] += 1
+                        if not error and result and "analyzed" in result:
+                            for item in result["analyzed"]:
+                                w_key = item["word"].lower()
+                                st.session_state["text_cache"][w_key] = {
+                                    "morpheme": item["root"],
+                                    "meaning": item["root_meaning"],
+                                    "type": item["role"]
+                                }
+                                st.session_state["analysis_stats"]["api"] += 1
+                        
+                        # Cache the rest as None to avoid repeated calls
+                        for w in unknown_words_to_api:
+                            if w not in st.session_state["text_cache"]:
+                                st.session_state["text_cache"][w] = None
+
+            # ハイライト表示の生成
+            display_html = ""
+            tokens = re.findall(r'\w+|[^\w\s]|\s+', input_text)
+            
+            # Match results container for ranking
+            current_matches = []
+
+            for token in tokens:
+                w_lower = token.lower()
+                if w_lower in st.session_state["text_cache"] and st.session_state["text_cache"][w_lower]:
+                    res = st.session_state["text_cache"][w_lower]
+                    m_type = res["type"]
+                    current_matches.append(res)
+                    
+                    # Styles from specifications
+                    if m_type == "prefix":
+                        bg, border = "rgba(52,152,219,0.25)", "#3498db"
+                    elif m_type == "root":
+                        bg, border = "rgba(241,196,15,0.25)", "#f1c40f"
+                    elif m_type == "suffix":
+                        bg, border = "rgba(46,204,113,0.25)", "#2ecc71"
+                    else:
+                        bg, border = "transparent", "none"
+                        
+                    display_html += f'<span style="background-color: {bg}; border-bottom: 2px solid {border}; padding: 1px 3px; border-radius: 3px;">{token}<sub style="color:#8b949e; font-size:0.7em; margin-left: 2px;">{res["morpheme"]}</sub></span>'
+                else:
+                    display_html += token
+            
+            st.markdown(f'<div style="line-height: 2.2; font-size: 1.15em; background-color: #1e2227; padding: 25px; border-radius: 12px; border: 1px solid #30363d; color: #e0e0e0; min-height: 100px;">{display_html}</div>', unsafe_allow_html=True)
+
+    with col_side:
+        st.subheader("📊 語根ランキング")
+        
+        # Current analysis results aggregation
+        if input_text and "text_cache" in st.session_state:
+            # Re-collect all matches in the current text
+            words_in_text = re.findall(r'\b\w+\b', input_text)
+            matches_in_text = []
+            for w in words_in_text:
+                w_l = w.lower()
+                if w_l in st.session_state["text_cache"] and st.session_state["text_cache"][w_l]:
+                    matches_in_text.append((w, st.session_state["text_cache"][w_l]))
+            
+            if matches_in_text:
+                # Group by morpheme
+                morpheme_counts = {}
+                for word, m_info in matches_in_text:
+                    m_key = f"{m_info['morpheme']}|{m_info['type']}"
+                    if m_key not in morpheme_counts:
+                        morpheme_counts[m_key] = {"info": m_info, "words": set(), "count": 0}
+                    morpheme_counts[m_key]["words"].add(word)
+                    morpheme_counts[m_key]["count"] += 1
+                
+                # Sort by count
+                sorted_ranks = sorted(morpheme_counts.items(), key=lambda x: x[1]["count"], reverse=True)
+                max_count = sorted_ranks[0][1]["count"] if sorted_ranks else 1
+                
+                for m_id, data in sorted_ranks:
+                    info = data["info"]
+                    m_type = info["type"]
+                    color = "#3498db" if m_type == "prefix" else "#f1c40f" if m_type == "root" else "#2ecc71"
+                    
+                    with st.container():
+                        st.markdown(f"""
+                        <div style="margin-top: 15px;">
+                            <span style="color: {color}; font-weight: bold; font-size: 1.1em;">{info['morpheme']}</span> 
+                            <span style="font-size: 0.8em; color: #8b949e; margin-left: 5px;">({info['meaning']})</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.progress(data["count"] / max_count)
+                        st.markdown(f"<p style='font-size: 0.85em; color: #8b949e; margin-top: -10px;'>検出語: {', '.join(list(data['words']))}</p>", unsafe_allow_html=True)
+            else:
+                st.info("単語を解析して語源を見つけましょう。")
+        
+        st.markdown("---")
+        st.subheader("⚙️ API使用状況")
+        stats = st.session_state.get("analysis_stats", {"local": 0, "api": 0, "cache": 0, "api_calls": 0})
+        st.caption(f"ローカル照合: {stats['local']} 語")
+        st.caption(f"API解析: {stats['api']} 語")
+        st.caption(f"キャッシュ使用: {stats['cache']} 語")
+        st.caption(f"今回のAPIコール: {stats['api_calls']} 回")
