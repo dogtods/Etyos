@@ -24,38 +24,38 @@ st.markdown("""
 <style>
     /* Main background and text */
     .main {
-        background-color: #0e1117;
-        color: #e0e0e0;
+        background-color: #f8f9fa;
+        color: #2c3e50;
     }
     
     /* Card design */
     .stCard {
-        background-color: #1e2227;
+        background-color: #ffffff;
         padding: 20px;
         border-radius: 12px;
-        border: 1px solid #30363d;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        border: 1px solid #e1e4e8;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         margin-bottom: 20px;
         transition: transform 0.2s ease, border-color 0.2s ease;
     }
     .stCard:hover {
         transform: translateY(-5px);
-        border-color: #58a6ff;
+        border-color: #005bb7;
     }
     
     /* Morpheme Tags */
-    .tag-prefix { color: #3498db; font-weight: bold; }
-    .tag-root { color: #f1c40f; font-weight: bold; }
-    .tag-suffix { color: #2ecc71; font-weight: bold; }
+    .tag-prefix { color: #005bb7; font-weight: bold; }
+    .tag-root { color: #a57c00; font-weight: bold; }
+    .tag-suffix { color: #1d8348; font-weight: bold; }
     
     /* Frequency indicators */
-    .freq-high { color: #2ecc71; }
-    .freq-medium { color: #f1c40f; }
-    .freq-low { color: #95a5a6; }
+    .freq-high { color: #1d8348; }
+    .freq-medium { color: #d68910; }
+    .freq-low { color: #7f8c8d; }
     
     /* Header styling */
     h1, h2, h3 {
-        color: #ffffff;
+        color: #1a1a1a;
         font-family: 'Inter', sans-serif;
     }
     
@@ -67,9 +67,9 @@ st.markdown("""
         margin: 5px;
         min-width: 100px;
     }
-    .bg-prefix { background-color: rgba(52, 152, 219, 0.1); border: 1px solid #3498db; }
-    .bg-root { background-color: rgba(241, 196, 15, 0.1); border: 1px solid #f1c40f; }
-    .bg-suffix { background-color: rgba(46, 204, 113, 0.1); border: 1px solid #2ecc71; }
+    .bg-prefix { background-color: rgba(0, 91, 183, 0.08); border: 1px solid #005bb7; }
+    .bg-root { background-color: rgba(165, 124, 0, 0.08); border: 1px solid #a57c00; }
+    .bg-suffix { background-color: rgba(29, 131, 72, 0.08); border: 1px solid #1d8348; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -151,13 +151,13 @@ def render_morpheme_card(m):
     st.markdown(f"""
     <div class="stCard">
         <h3 class="{color_class}">{m['morpheme']}</h3>
-        <p><strong>意味:</strong> {m['meaning']}</p>
-        <p><strong>由来:</strong> {m['origin']}</p>
-        <p><strong>例語:</strong> {examples_str}</p>
-        <p><strong>頻度:</strong> <span class="{freq_class}">{m['frequency'].upper()}</span></p>
-        <p><strong>関連語数:</strong> 約{m['related_count']}語</p>
-        <hr style="border: 0.5px solid #30363d;">
-        <p style="font-size: 0.9em; font-style: italic; color: #8b949e;">💡 {m['memory_hint']}</p>
+        <p style="color: #2c3e50;"><strong>意味:</strong> {m['meaning']}</p>
+        <p style="color: #2c3e50;"><strong>由来:</strong> {m['origin']}</p>
+        <p style="color: #2c3e50;"><strong>例語:</strong> {examples_str}</p>
+        <p style="color: #2c3e50;"><strong>頻度:</strong> <span class="{freq_class}">{m['frequency'].upper()}</span></p>
+        <p style="color: #2c3e50;"><strong>関連語数:</strong> 約{m['related_count']}語</p>
+        <hr style="border: 0.5px solid #e1e4e8;">
+        <p style="font-size: 0.9em; font-style: italic; color: #6c757d;">💡 {m['memory_hint']}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -234,8 +234,8 @@ elif page == "単語分解":
                         st.markdown(f"""
                         <div class="part-box {bg_class}">
                             <div class="{tag_class}" style="font-size: 1.5em;">{part['text']}</div>
-                            <div style="font-size: 0.8em; color: #8b949e;">{role.upper()}</div>
-                            <div style="margin-top: 5px;">{part['meaning']}</div>
+                            <div style="font-size: 0.8em; color: #6c757d;">{role.upper()}</div>
+                            <div style="margin-top: 5px; color: #2c3e50;">{part['meaning']}</div>
                         </div>
                         """, unsafe_allow_html=True)
                 
@@ -585,25 +585,25 @@ elif page == "文章から学ぶ":
                     m_type = res["type"]
                     
                     if m_type == "prefix":
-                        bg, border = "rgba(52,152,219,0.25)", "#3498db"
+                        bg, border = "rgba(0, 91, 183, 0.1)", "#005bb7"
                     elif m_type == "root":
-                        bg, border = "rgba(241,196,15,0.25)", "#f1c40f"
+                        bg, border = "rgba(165, 124, 0, 0.1)", "#a57c00"
                     elif m_type == "suffix":
-                        bg, border = "rgba(46,204,113,0.25)", "#2ecc71"
+                        bg, border = "rgba(29, 131, 72, 0.1)", "#1d8348"
                     else:
                         bg, border = "transparent", "none"
                         
-                    display_html += f'<span style="background-color: {bg}; border-bottom: 2px solid {border}; padding: 1px 3px; border-radius: 3px;">{token}<sub style="color:#8b949e; font-size:0.7em; margin-left: 2px;">{res["morpheme"]}</sub></span>'
+                    display_html += f'<span style="background-color: {bg}; border-bottom: 2px solid {border}; padding: 1px 3px; border-radius: 3px; font-weight: 500;">{token}<sub style="color:#6c757d; font-size:0.7em; margin-left: 2px;">{res["morpheme"]}</sub></span>'
                 else:
                     display_html += token
             
-            st.markdown(f'<div style="line-height: 2.2; font-size: 1.15em; background-color: #1e2227; padding: 25px; border-radius: 12px; border: 1px solid #30363d; color: #e0e0e0; min-height: 100px;">{display_html}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="line-height: 2.2; font-size: 1.15em; background-color: #ffffff; padding: 25px; border-radius: 12px; border: 1px solid #e1e4e8; color: #2c3e50; min-height: 100px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">{display_html}</div>', unsafe_allow_html=True)
 
             if st.session_state["analysis_digest"]:
                 st.markdown(f"""
-                <div style="background-color: rgba(88, 166, 255, 0.1); border-left: 5px solid #58a6ff; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                    <h4 style="margin-top: 0; color: #58a6ff;">💡 AI語源ダイジェスト</h4>
-                    <p style="font-size: 0.95em; color: #e0e0e0; line-height: 1.6;">{st.session_state['analysis_digest']}</p>
+                <div style="background-color: #e7f3ff; border-left: 5px solid #005bb7; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                    <h4 style="margin-top: 0; color: #005bb7;">💡 AI語源ダイジェスト</h4>
+                    <p style="font-size: 0.95em; color: #2c3e50; line-height: 1.6;">{st.session_state['analysis_digest']}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -636,17 +636,17 @@ elif page == "文章から学ぶ":
                 for m_id, data in sorted_ranks:
                     info = data["info"]
                     m_type = info["type"]
-                    color = "#3498db" if m_type == "prefix" else "#f1c40f" if m_type == "root" else "#2ecc71"
+                    color = "#005bb7" if m_type == "prefix" else "#a57c00" if m_type == "root" else "#1d8348"
                     
                     with st.container():
                         st.markdown(f"""
                         <div style="margin-top: 15px;">
                             <span style="color: {color}; font-weight: bold; font-size: 1.1em;">{info['morpheme']}</span> 
-                            <span style="font-size: 0.8em; color: #8b949e; margin-left: 5px;">({info['meaning']})</span>
+                            <span style="font-size: 0.8em; color: #6c757d; margin-left: 5px;">({info['meaning']})</span>
                         </div>
                         """, unsafe_allow_html=True)
                         st.progress(data["count"] / max_count)
-                        st.markdown(f"<p style='font-size: 0.85em; color: #8b949e; margin-top: -10px;'>検出語: {', '.join(list(data['words']))}</p>", unsafe_allow_html=True)
+                        st.markdown(f"<p style='font-size: 0.85em; color: #6c757d; margin-top: -10px;'>検出語: {', '.join(list(data['words']))}</p>", unsafe_allow_html=True)
             else:
                 st.info("文章を解析して語源を見つけましょう。")
         
