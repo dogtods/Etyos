@@ -44,20 +44,19 @@ st.markdown("""
     }
     
     /* Morpheme Tags */
-    .tag-prefix { color: #005bb7; font-weight: bold; }
-    .tag-root { color: #a57c00; font-weight: bold; }
-    .tag-suffix { color: #1d8348; font-weight: bold; }
+    .tag-prefix { color: #000000; font-weight: bold; border-left: 5px solid #005bb7; padding-left: 10px; }
+    .tag-root { color: #000000; font-weight: bold; border-left: 5px solid #a57c00; padding-left: 10px; }
+    .tag-suffix { color: #000000; font-weight: bold; border-left: 5px solid #1d8348; padding-left: 10px; }
     
     /* Frequency indicators */
-    .freq-high { color: #1d8348; }
-    .freq-medium { color: #d68910; }
-    .freq-low { color: #7f8c8d; }
+    .freq-high { color: #138d75; font-weight: bold; }
+    .freq-medium { color: #b7950b; font-weight: bold; }
+    .freq-low { color: #707b7c; font-weight: bold; }
     
-    /* Header styling */
-    h1, h2, h3 {
-        color: #1a1a1a;
-        font-family: 'Inter', sans-serif;
-    }
+    /* Header styling (Responsive for mobile) */
+    h1 { font-size: 1.6rem !important; color: #111111 !important; font-family: 'Inter', sans-serif; }
+    h2 { font-size: 1.35rem !important; color: #111111 !important; font-family: 'Inter', sans-serif; }
+    h3 { font-size: 1.15rem !important; color: #111111 !important; font-family: 'Inter', sans-serif; }
     
     /* Custom columns for decomposition */
     .part-box {
@@ -150,14 +149,18 @@ def render_morpheme_card(m):
     
     st.markdown(f"""
     <div class="stCard">
-        <h3 class="{color_class}">{m['morpheme']}</h3>
-        <p style="color: #2c3e50;"><strong>意味:</strong> {m['meaning']}</p>
-        <p style="color: #2c3e50;"><strong>由来:</strong> {m['origin']}</p>
-        <p style="color: #2c3e50;"><strong>例語:</strong> {examples_str}</p>
-        <p style="color: #2c3e50;"><strong>頻度:</strong> <span class="{freq_class}">{m['frequency'].upper()}</span></p>
-        <p style="color: #2c3e50;"><strong>関連語数:</strong> 約{m['related_count']}語</p>
-        <hr style="border: 0.5px solid #e1e4e8;">
-        <p style="font-size: 0.9em; font-style: italic; color: #6c757d;">💡 {m['memory_hint']}</p>
+        <div style="margin-bottom: 12px;">
+            <span class="{color_class}" style="font-size: 1.25em; display: inline-block; padding: 2px 0 2px 10px;">{m['morpheme']}</span>
+        </div>
+        <p style="color: #1a1a1a; margin-bottom: 4px;"><strong>意味:</strong> {m['meaning']}</p>
+        <p style="color: #1a1a1a; margin-bottom: 4px;"><strong>由来:</strong> {m['origin']}</p>
+        <p style="color: #1a1a1a; margin-bottom: 4px;"><strong>例語:</strong> {examples_str}</p>
+        <div style="display: flex; gap: 15px; font-size: 0.9em; margin-top: 8px;">
+            <p style="color: #1a1a1a;"><strong>頻度:</strong> <span class="{freq_class}">{m['frequency'].upper()}</span></p>
+            <p style="color: #1a1a1a;"><strong>関連語数:</strong> 約{m['related_count']}語</p>
+        </div>
+        <hr style="border: 0.5px solid #e1e4e8; margin: 10px 0;">
+        <p style="font-size: 0.85em; font-style: italic; color: #4a4a4a; background-color: #f8f9fa; padding: 8px; border-radius: 4px;">💡 {m['memory_hint']}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -233,9 +236,9 @@ elif page == "単語分解":
                     with cols[i]:
                         st.markdown(f"""
                         <div class="part-box {bg_class}">
-                            <div class="{tag_class}" style="font-size: 1.5em;">{part['text']}</div>
-                            <div style="font-size: 0.8em; color: #6c757d;">{role.upper()}</div>
-                            <div style="margin-top: 5px; color: #2c3e50;">{part['meaning']}</div>
+                            <div class="{tag_class}" style="font-size: 1.5em; border: none; padding-left: 0;">{part['text']}</div>
+                            <div style="font-size: 0.8em; color: #4a4a4a;">{role.upper()}</div>
+                            <div style="margin-top: 5px; color: #000000; font-weight: 500;">{part['meaning']}</div>
                         </div>
                         """, unsafe_allow_html=True)
                 
@@ -408,7 +411,7 @@ elif page == "今日の語根":
         st.rerun()
         
     target = st.session_state.daily_root
-    st.header(f"Today's Pick: {target['morpheme']}")
+    st.markdown(f"### 📅 Today's Pick: <span style='color: #000000;'>{target['morpheme']}</span>", unsafe_allow_html=True)
     render_morpheme_card(target)
     
     if not st.session_state.get('daily_explanation'):
@@ -641,8 +644,8 @@ elif page == "文章から学ぶ":
                     with st.container():
                         st.markdown(f"""
                         <div style="margin-top: 15px;">
-                            <span style="color: {color}; font-weight: bold; font-size: 1.1em;">{info['morpheme']}</span> 
-                            <span style="font-size: 0.8em; color: #6c757d; margin-left: 5px;">({info['meaning']})</span>
+                            <span style="color: #000000; font-weight: bold; font-size: 1.1em; border-left: 4px solid {color}; padding-left: 8px;">{info['morpheme']}</span> 
+                            <span style="font-size: 0.85em; color: #4a4a4a; margin-left: 5px;">({info['meaning']})</span>
                         </div>
                         """, unsafe_allow_html=True)
                         st.progress(data["count"] / max_count)
