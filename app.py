@@ -129,7 +129,7 @@ def call_gemini(prompt):
     
     try:
         genai.configure(api_key=api_key)
-        model = genai.Generative("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-flash-lite-latest")
         response = model.generate_content(prompt)
         text = response.text
         
@@ -422,8 +422,8 @@ elif page == "今日の語根":
                 """
                 try:
                     genai.configure(api_key=api_key)
-                     = genai.Generative("gemini-1.5-flash")
-                    response = .generate_content(prompt)
+                    model = genai.GenerativeModel("gemini-flash-lite-latest")
+                    response = model.generate_content(prompt)
                     st.session_state.daily_explanation = response.text
                     st.rerun()
                 except Exception as e:
