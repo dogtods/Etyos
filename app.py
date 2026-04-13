@@ -363,7 +363,7 @@ elif page == "語根ワールド":
             if error:
                 st.error(error)
             else:
-                st.subheader(f"Root: {target['text']}")
+                st.subheader(f"Root: {target['morpheme']}")
                 st.info(f"**記憶イメージ:** {result['記憶イメージ']}")
                 
                 st.markdown("### 📦 派生語ネットワーク")
