@@ -444,6 +444,8 @@ elif page == "文章から学ぶ":
         st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
     if "translated_text" not in st.session_state:
         st.session_state["translated_text"] = None
+    if "analysis_digest" not in st.session_state:
+        st.session_state["analysis_digest"] = None
 
     col_main, col_side = st.columns([7, 3])
 
@@ -458,6 +460,7 @@ elif page == "文章から学ぶ":
                 st.session_state["text_cache"] = {}
                 st.session_state["analysis_stats"] = {"local": 0, "api": 0, "cache": 0, "api_calls": 0}
                 st.session_state["translated_text"] = None
+                st.session_state["analysis_digest"] = None
                 st.rerun()
 
         if input_text:
@@ -482,7 +485,7 @@ elif page == "文章から学ぶ":
                         """
                         res, err = call_gemini(trans_prompt)
                         st.session_state["analysis_stats"]["api_calls"] += 1
-                        if not error and res:
+                        if not err and res:
                             st.session_state["translated_text"] = res.get("translated_text", "")
                         else:
                             st.error(f"翻訳に失敗しました: {err}")
@@ -523,31 +526,35 @@ elif page == "文章から学ぶ":
                             unknown_words_to_api.append(word)
                         else:
                             st.session_state["text_cache"][word] = None
-                
-                # Step 2: API Call (Etymology Analysis)
-                if unknown_words_to_api:
-                    with st.spinner(f"AIが {len(unknown_words_to_api)} 語を詳細解析中..."):
-                        unknown_list_str = ", ".join(unknown_words_to_api)
-                        prompt = f"""
-                        以下の英単語リストを語源分析してください。
-                        単語：{unknown_list_str}
 
-                        JSONのみで返してください：
+                # Step 2: API Call (Etymology Analysis + Digest)
+                with st.spinner("AIが語源の繋がりを解析中..."):
+                    unknown_list_str = ", ".join(unknown_words_to_api) if unknown_words_to_api else "なし"
+                    prompt = f"""
+                    以下の英文に含まれる語源を分析し、学習者が単語の成り立ちを理解しやすくなる「語源ダイジェスト」を作成してください。
+                    また、未知の単語リストについても分析してください。
+
+                    英文：{target_text}
+                    未知の単語リスト：{unknown_list_str}
+
+                    以下のJSON形式のみで返してください：
+                    {{
+                      "analyzed": [
                         {{
-                          "analyzed": [
-                            {{
-                              "word": "example",
-                              "root": "empl",
-                              "root_meaning": "取る",
-                              "role": "root",
-                              "memory": "サンプルを取り出すイメージ"
-                            }}
-                          ]
+                          "word": "example",
+                          "root": "empl",
+                          "root_meaning": "取る",
+                          "role": "root"
                         }}
-                        """
-                        result, error = call_gemini(prompt)
-                        st.session_state["analysis_stats"]["api_calls"] += 1
-                        if not error and result and "analyzed" in result:
+                      ],
+                      "digest": "この文章で中心となる語根は『〇〇』です。これは『〜』という意味があり、単語△△（意味）は『✕✕』という風に成り立っています。"
+                    }}
+                    """
+                    result, error = call_gemini(prompt)
+                    st.session_state["analysis_stats"]["api_calls"] += 1
+                    
+                    if not error and result:
+                        if "analyzed" in result:
                             for item in result["analyzed"]:
                                 w_key = item["word"].lower()
                                 st.session_state["text_cache"][w_key] = {
@@ -556,10 +563,12 @@ elif page == "文章から学ぶ":
                                     "type": item["role"]
                                 }
                                 st.session_state["analysis_stats"]["api"] += 1
-                        
-                        for w in unknown_words_to_api:
-                            if w not in st.session_state["text_cache"]:
-                                st.session_state["text_cache"][w] = None
+                        st.session_state["analysis_digest"] = result.get("digest", "")
+                    
+                    # Cache the rest as None to avoid repeated calls
+                    for w in unknown_words_to_api:
+                        if w not in st.session_state["text_cache"]:
+                            st.session_state["text_cache"][w] = None
 
             # 解析結果の表示 (target_textを使用)
             if st.session_state["translated_text"]:
@@ -589,6 +598,14 @@ elif page == "文章から学ぶ":
                     display_html += token
             
             st.markdown(f'<div style="line-height: 2.2; font-size: 1.15em; background-color: #1e2227; padding: 25px; border-radius: 12px; border: 1px solid #30363d; color: #e0e0e0; min-height: 100px;">{display_html}</div>', unsafe_allow_html=True)
+
+            if st.session_state["analysis_digest"]:
+                st.markdown(f"""
+                <div style="background-color: rgba(88, 166, 255, 0.1); border-left: 5px solid #58a6ff; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                    <h4 style="margin-top: 0; color: #58a6ff;">💡 AI語源ダイジェスト</h4>
+                    <p style="font-size: 0.95em; color: #e0e0e0; line-height: 1.6;">{st.session_state['analysis_digest']}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
     with col_side:
         st.subheader("📊 語根ランキング")
